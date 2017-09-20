@@ -1,7 +1,14 @@
 (cl:defpackage #:ethi
   (:use #:cl)
-  (:export #:client-version
-           #:connected?))
+  ;; web3
+  (:export #:web3/client-version
+           #:web3/sha3)
+  ;; net
+  (:export #:net/version
+           #:net/peer-count)
+  ;; eth
+  (:export #:eth/protocol-version)
+  )
 (in-package #:ethi)
 
 ;; make it possible for drakma to get json response as text
@@ -17,7 +24,7 @@
     (format nil "~A~@[:~A~]" host port)))
 
 (defparameter *default-config*
-  '(;; the RPC endpoint
+  '(;; the default local RPC endpoint
     :host "http://localhost"
     :port 8545
     ;; this will be included in every method call unless overwrited
@@ -41,16 +48,39 @@ you will not need to change this values.")
     ("params" . ,params)
     ("id" . ,(config-id))))
 
+(defun handle-response (response)
+  "Convert from json, get result, handle errors, etc..."
+  (cdr (assoc :result
+         (cl-json:decode-json-from-string response))))
+
+(defun make-request (uri raw-body)
+  "Generic http post request with raw body"
+  (drakma:http-request uri
+                       :method :post
+                       :content raw-body))
+
 (defun api-call (method params)
+  "To be used by all methods"
   (let ((raw-body (cl-json:encode-json-to-string
                    (make-body method params))))
-    (drakma:http-request (uri)
-                         :method :post
-                         :content raw-body)))
+    (handle-response
+     (make-request (uri) raw-body))))
 
-(defun client-version ()
+;;;; API
+;;; web3
+(defun web3/client-version ()
   (api-call "web3_clientVersion" #()))
 
-(defun connected? nil
-  "Attempts to do a simple call to the RPC endpoint")
+(defun web3/sha3 (data)
+  (api-call "web3_sha3" (list data)))
 
+;;; net
+(defun net/version ()
+  (api-call "net_version" #()))
+
+(defun net/peer-count ()
+  (api-call "net_peerCount" #()))
+
+;;; eth
+(defun eth/protocol-version ()
+  (api-call "eth_protocolVersion" #()))
