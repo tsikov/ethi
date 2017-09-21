@@ -66,6 +66,25 @@ you will not need to change this values.")
     (handle-response
      (make-request (uri) raw-body))))
 
+(defun camel-case-to-kebab-case (str)
+  (with-output-to-string (out)
+    (loop for c across str
+       if (upper-case-p c)
+       do (format out "-~A" c)
+       else
+       do (format out "~A" (char-upcase c)))))
+
+(defun geth-method-to-cl-method (geth-method)
+  (let* (;; this will deal with the namespace: _ -> /
+         (cl-method (substitute #\/ #\_ geth-method))
+         ;; this will deal with the case: fooBar -> foo-bar
+         (cl-method (camel-case-to-kebab-case cl-method)))
+    cl-method))
+
+(defmacro declare-endpoint (method &rest params)
+  `(defun ,(intern (geth-method-to-cl-method method)) ,params
+     (api-call ,method (list ,@params))))
+
 ;;;; API
 ;;; web3
 (defun web3/client-version ()
