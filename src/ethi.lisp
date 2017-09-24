@@ -64,10 +64,18 @@ you will not need to change this values.")
     ("params" . ,params)
     ("id" . ,(config-id))))
 
+(defun response-error (response)
+  (cdr (assoc :error response)))
+
 (defun handle-response (response)
   "Convert from json, get result, handle errors, etc..."
-  (cdr (assoc :result
-         (cl-json:decode-json-from-string response))))
+  ;; decode JSON string to CL alist
+  (let ((decoded-response (cl-json:decode-json-from-string response)))
+    ;; check for errors
+    (if (response-error decoded-response)
+        (error (response-error decoded-response))
+        ;; ignore the rest of the response and return the result
+        (cdr (assoc :result decoded-response)))))
 
 (defun make-request (uri raw-body)
   "Generic http post request with raw body"
