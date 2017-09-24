@@ -7,7 +7,23 @@
   (:export #:net/version
            #:net/peer-count)
   ;; eth
-  (:export #:eth/protocol-version)
+  (:export #:eth/protocol-version
+           #:eth/syncing
+           #:eth/coinbase
+           #:eth/mining
+           #:eth/hashrate
+           #:eth/gas-price
+           #:eth/accounts
+           #:eth/block-number
+           #:eth/get-balance
+           #:eth/get-storage-at
+           #:eth/get-transaction-count
+           #:eth/get-block-transaction-count-by-hash
+           #:eth/get-block-transaction-count-by-number
+           #:eth/get-uncle-count-by-block-hash
+           #:eth/get-uncle-count-by-block-number
+           #:eth/get-code
+           #:eth/sign)
   )
 (in-package #:ethi)
 
@@ -87,19 +103,28 @@ you will not need to change this values.")
 
 ;;;; API
 ;;; web3
-(defun web3/client-version ()
-  (api-call "web3_clientVersion" #()))
-
-(defun web3/sha3 (data)
-  (api-call "web3_sha3" (list data)))
+(declare-endpoint "web3_clientVersion")
+(declare-endpoint "web3_sha3" data)
 
 ;;; net
-(defun net/version ()
-  (api-call "net_version" #()))
-
-(defun net/peer-count ()
-  (api-call "net_peerCount" #()))
+(declare-endpoint "net_version")
+(declare-endpoint "net_peerCount")
 
 ;;; eth
-(defun eth/protocol-version ()
-  (api-call "eth_protocolVersion" #()))
+(declare-endpoint "eth_protocolVersion")
+(declare-endpoint "eth_syncing")
+(declare-endpoint "eth_coinbase")
+(declare-endpoint "eth_mining")
+(declare-endpoint "eth_hashrate")
+(declare-endpoint "eth_gasPrice")
+(declare-endpoint "eth_accounts")
+(declare-endpoint "eth_blockNumber")
+(declare-endpoint "eth_getBalance" address quantity/tag)
+(declare-endpoint "eth_getStorageAt" address quantity quantity/tag)
+(declare-endpoint "eth_getTransactionCount" address quantity/tag)
+(declare-endpoint "eth_getBlockTransactionCountByHash" block-hash)
+(declare-endpoint "eth_getBlockTransactionCountByNumber" quantity/tag)
+(declare-endpoint "eth_getUncleCountByBlockHash" bock-hash)
+(declare-endpoint "eth_getUncleCountByBlockNumber" quantity/tag)
+(declare-endpoint "eth_getCode" address quantity/tag)
+(declare-endpoint "eth_sign" address data)
