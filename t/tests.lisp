@@ -2,6 +2,17 @@
   (:use #:cl #:prove #:ethi))
 (in-package #:ethi-test)
 
+;; configure prove
+(setf prove:*debug-on-error* t)
+(setf prove:*enable-colors* nil)
+
+;; set up test node
+;; (ethi::modify-config :host "https://mainnet.infura.io/EyJE0yo8FulxSDAjRwMN")
+;; (ethi::modify-config :port nil)
+
+(ethi::modify-config :host "http://localhost")
+(ethi::modify-config :port 8545)
+
 (plan 1)
 
 ;;; helper functions
@@ -17,11 +28,32 @@
 
 (defun hex-and-of-length (str length)
   (and (starts-with-hex-p str)
-       (= (length (+ 2 str)) length)))
+       (= (- (length str) 2) length)))
+
+(defun transaction-hash-p (str)
+  (hex-and-of-length str 64))
+
+(defun create-transaction ()
+  (ethi:eth/send-transaction *transaction-object*))
+
+
+
+;; stubs
+
+(defparameter *transaction-object*
+  (ethi::transaction-object :from (car (ethi:eth/accounts))
+                            :to (cadr (ethi:eth/accounts))
+                            :value "0x9184e72a"
+                            :data ""))
 
 ;;; tests
 
 (vcr:with-vcr "rpc-endpoints"
+  ;; (subtest "UTILS"
+  ;;   (is (ethi::geth-method-to-cl-method "web3_clientVersion")
+  ;;       "WEB3/CLIENT-VERSION"
+  ;;       "Converts symbol to string for use of macro")
+  ;;   )
 
   (subtest "API"
     ;; Note: I am assuming you have a running geth on your local
@@ -40,7 +72,7 @@
           "Can give a sha3 of data")
 
       (is (ethi:net/version)
-          "1"
+          "555" ; check out the t/genesis.json file where it is specified
           "Can give the net version")
 
       (ok (starts-with-hex-p (ethi:net/peer-count))
@@ -91,7 +123,7 @@
 
       (ok (starts-with-hex-p
            (ethi:eth/get-block-transaction-count-by-hash
-            "0xeff0e1a88aa19ec53e5e1f9b3a4ea3dd897f037cc36c786712b93f0a197eb79c"))
+            (cdr (assoc :hash (ethi:eth/get-block-by-number "0x1" nil)))))
           "Can return the number of transactions in a block from the block hash")
 
       (ok (starts-with-hex-p
@@ -100,7 +132,7 @@
 
       (ok (starts-with-hex-p
            (ethi:eth/get-uncle-count-by-block-hash
-            "0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"))
+            (cdr (assoc :hash (ethi:eth/get-block-by-number "0x1" nil)))))
           "Returns the number of uncles in a block from a block matching the
 given block hash")
 
@@ -115,10 +147,61 @@ given block number")
             "latest"))
           "Returns code at a given address.")
 
-      ;; needs the first account to be unlocked
       (ok (starts-with-hex-p
            (ethi:eth/sign (car (ethi:eth/accounts)) "0xdeadbeaf"))
           "Can sign data")
+
+      (ok (transaction-hash-p
+           (ethi:eth/send-transaction *transaction-object*))
+          "Can send transaction")
+
+      ;; (ok (transaction-hash-p
+      ;;      (ethi:eth/send-raw-transaction ""))
+      ;;     "Can create new message call transaction or a contract creation for signed transactions.")
+
+      (ok (starts-with-hex-p
+           (ethi:eth/call *transaction-object* "latest"))
+          "Can execute a new message call immediately without creating a transaction on the block chain")
+
+      (ok (starts-with-hex-p
+           (ethi:eth/estimate-gas *transaction-object*))
+          "Can make a call or transaction, which won't be added to the blockchain and returns the used gas, which can be used for estimating the used gas")
+
+      (ok (starts-with-hex-p
+           (let ((block-hash (cdr (assoc :hash (ethi:eth/get-block-by-number "0x1" nil)))))
+             (cdr (assoc :hash
+                         (ethi:eth/get-block-by-hash block-hash nil)))))
+           "Returns information about a block by block hash.")
+
+      (ok (starts-with-hex-p
+           ;; right now with `t` or `nil` geth returns the whole transaction.
+           ;; this is a bug with geth
+           (cdr (assoc :hash (ethi:eth/get-block-by-number "0x1" nil))))
+          "Returns information about a block by block number.")
+
+      (ok (listp
+           (let ((transaction-hash (create-transaction)))
+            (ethi:eth/get-transaction-by-hash transaction-hash)))
+          "Can return the information about a transaction requested by transaction hash.")
+
+      (ok (listp
+           (ethi:eth/get-transaction-by-block-hash-and-index
+            "0x0000000000000000000000000000000000000000000000000000000000000000"
+            "0x0"))
+          "Can return information about a transaction by block hash and transaction index position.")
+
+      (ok (listp
+           (ethi:eth/get-transaction-by-block-number-and-index
+            "0x0" "0x0"))
+          "Can return information about a transaction by block hash and transaction index position.")
+
+      (ok (listp
+           (let ((transaction-hash (create-transaction)))
+             (ethi:eth/get-transaction-receipt transaction-hash)))
+          "Can return the receipt of a transaction by transaction hash.")
+
+
+
       )
     )
   )

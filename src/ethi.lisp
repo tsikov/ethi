@@ -23,7 +23,18 @@
            #:eth/get-uncle-count-by-block-hash
            #:eth/get-uncle-count-by-block-number
            #:eth/get-code
-           #:eth/sign)
+           #:eth/sign
+           #:eth/send-transaction
+           #:eth/send-raw-transaction ; not implemented yet
+           #:eth/call
+           #:eth/estimate-gas
+           #:eth/get-block-by-hash
+           #:eth/get-block-by-number
+           #:eth/get-transaction-by-hash
+           #:eth/get-transaction-by-block-hash-and-index
+           #:eth/get-transaction-by-block-number-and-index
+           #:eth/get-transaction-receipt
+           )
   )
 (in-package #:ethi)
 
@@ -63,6 +74,35 @@ you will not need to change this values.")
     ("method" . ,method)
     ("params" . ,params)
     ("id" . ,(config-id))))
+
+(defun rpc-source (source)
+  (if (string= source "localhost")
+      (progn
+        (modify-config :host "http://localhost")
+        (modify-config :port 8545))
+      (progn
+        (modify-config :host "http://localhost")
+        (modify-config :port 8545))))
+
+(defun transaction-object (&key from to gas gas-price value data nonce)
+  (if (not (and from to data))
+      (error "`from`, `to` and `data` are not optional"))
+  (remove nil
+          `((:from . ,from)
+            (:to . ,to)
+            ;; optional
+            ,(if gas
+                 `(:gas . ,gas))
+            ;; optional
+            ,(if gas-price
+                 `(:gasPrice . ,gas-price))
+            ;; optional
+            ,(if value
+                 `(:value . ,value))
+            (:data . ,data)
+            ;; optional
+            ,(if nonce
+                 `(:nonce . ,nonce)))))
 
 (defun response-error (response)
   (cdr (assoc :error response)))
@@ -133,7 +173,17 @@ you will not need to change this values.")
 (declare-endpoint "eth_getTransactionCount" address quantity/tag)
 (declare-endpoint "eth_getBlockTransactionCountByHash" block-hash)
 (declare-endpoint "eth_getBlockTransactionCountByNumber" quantity/tag)
-(declare-endpoint "eth_getUncleCountByBlockHash" bock-hash)
+(declare-endpoint "eth_getUncleCountByBlockHash" block-hash)
 (declare-endpoint "eth_getUncleCountByBlockNumber" quantity/tag)
 (declare-endpoint "eth_getCode" address quantity/tag)
 (declare-endpoint "eth_sign" address data)
+(declare-endpoint "eth_sendTransaction" transaction-object)
+(declare-endpoint "eth_sendRawTransaction" signed-transaction-data)
+(declare-endpoint "eth_call" transaction-object quantity/tag)
+(declare-endpoint "eth_estimateGas" transaction-object)
+(declare-endpoint "eth_getBlockByHash" quantity/tag full-tx-object?)
+(declare-endpoint "eth_getBlockByNumber" quantity/tag full-tx-object?)
+(declare-endpoint "eth_getTransactionByHash" transaction-hash)
+(declare-endpoint "eth_getTransactionByBlockHashAndIndex" transaction-hash transaction-index)
+(declare-endpoint "eth_getTransactionByBlockNumberAndIndex" transaction-block transaction-index)
+(declare-endpoint "eth_getTransactionReceipt" transaction-hash)
